@@ -1,4 +1,5 @@
 begin Function {int menuID, int tileID, string_var tileName}
+ int replayState
  if GetActiveMenuMode != 1023
   return
  endif
@@ -18,6 +19,11 @@ begin Function {int menuID, int tileID, string_var tileName}
    SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" (2 + (GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_record"))
   elseif tileID == 29473
    SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" (4 + (GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_live"))
+  elseif tileID == 29474
+   let replayState := GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_replay"
+   if replayState > 0
+    SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" (5 + replayState)
+   endif
   endif
  endif
 end

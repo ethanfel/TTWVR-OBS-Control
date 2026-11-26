@@ -29,7 +29,29 @@ struct Guard {
 };
 Status state;
 ULONGLONG lastVisit, sampled, requested;
-const char* queued = nullptr;
+enum class Command { None, StartRecord, StopRecord, StartStream, StopStream, StartReplay, SaveReplay };
+Command queued = Command::None;
+const char* requestName(Command cmd) {
+    switch (cmd) {
+    case Command::StartRecord: return "StartRecord";
+    case Command::StopRecord: return "StopRecord";
+    case Command::StartStream: return "StartStream";
+    case Command::StopStream: return "StopStream";
+    case Command::StartReplay: return "StartReplayBuffer";
+    case Command::SaveReplay: return "SaveReplayBuffer";
+    default: throw Fault{Link::Failed};
+    }
+}
+bool reached(Command cmd, const Status& s) {
+    switch (cmd) {
+    case Command::StartRecord: return s.recording;
+    case Command::StopRecord: return !s.recording;
+    case Command::StartStream: return s.live;
+    case Command::StopStream: return !s.live;
+    case Command::StartReplay: return s.replay == Replay::Running;
+    default: return false;
+    }
+}
 HANDLE worker, wake, previewWorker, previewWake;
 Picture lastPicture;
 ULONGLONG pictureTime;
@@ -84,6 +106,7 @@ std::string hash64(const std::string& bytes) {
 struct Socket {
     Handle session, connection, websocket;
     unsigned seq = 0;
+    bool replaySaved = false;
     ~Socket() {
         if (websocket) {
             DWORD timeout = 350;
@@ -117,9 +140,9 @@ struct Socket {
             if (kind == WINHTTP_WEB_SOCKET_UTF8_MESSAGE_BUFFER_TYPE) return Json::parse(full);
         }
     }
-    void open() {
+    void open(bool outputEvents=false) {
         auto config = settings();
-        session.reset(WinHttpOpen(L"TTWVR OBS Control/0.2.1", WINHTTP_ACCESS_TYPE_NO_PROXY,
+        session.reset(WinHttpOpen(L"TTWVR OBS Control/0.3.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
                                   nullptr, nullptr, 0));
         if (!session || !WinHttpSetTimeouts(session.get(), 1500, 1500, 2000, 2500))
             throw Fault{Link::Offline};
@@ -138,7 +161,7 @@ struct Socket {
         if (!websocket) throw Fault{Link::Failed};
         auto hello = receive();
         if (hello.at("op") != 0 || hello.at("d").at("rpcVersion").get<int>() < 1) throw Fault{Link::Failed};
-        Json ident{{"rpcVersion", 1}, {"eventSubscriptions", 0}};
+        Json ident{{"rpcVersion", 1}, {"eventSubscriptions", outputEvents ? (1 << 6) : 0}};
         if (hello["d"].contains("authentication")) {
             auto& auth = hello["d"]["authentication"];
             ident["authentication"] = hash64(hash64(config.password + auth.at("salt").get<std::string>()) +
@@ -153,6 +176,13 @@ struct Socket {
         if (!params.is_null()) dreq["requestData"]=params;
         send({{"op",6},{"d",std::move(dreq)}});
         auto res = receive(limit);
+        while (res.at("op") == 5) {
+            const auto& event = res.at("d");
+            if (event.at("eventType") == "ReplayBufferSaved" &&
+                !event.at("eventData").value("savedReplayPath", std::string{}).empty())
+                replaySaved = true;
+            res = receive(limit);
+        }
         auto& d = res.at("d");
         if (res.at("op") != 7 || d.at("requestId") != id || d.at("requestType") != type)
             throw Fault{Link::Failed};
@@ -170,6 +200,9 @@ struct Socket {
         s.paused = rec.value("outputPaused", false);
         s.live = live.at("outputActive");
         s.reconnecting = live.value("outputReconnecting", false);
+        bool replayOk;
+        auto replay = request("GetReplayBufferStatus", replayOk);
+        if (replayOk) s.replay = replay.at("outputActive").get<bool>() ? Replay::Running : Replay::Stopped;
         return s;
     }
 };
@@ -222,9 +255,11 @@ DWORD WINAPI runPreview(void*) {
 DWORD WINAPI run(void*) {
     std::unique_ptr<Socket> socket;
     ULONGLONG errorUntil = 0, settleUntil = 0;
-    const char* settling = nullptr;
+    Command settling = Command::None;
+    Clip clip = Clip::Idle;
+    ULONGLONG clipUntil = 0;
     for (;;) {
-        const char* action = nullptr;
+        Command action = Command::None;
         bool visible;
         {
             Guard g;
@@ -232,38 +267,51 @@ DWORD WINAPI run(void*) {
             auto now = GetTickCount64();
             visible = lastVisit && now-lastVisit < freshMs;
             if (visible && socket && now-requested < freshMs) action = queued;
-            queued = nullptr;
+            queued = Command::None;
         }
-        if (!visible) {
-            socket.reset(); settling = nullptr; errorUntil = 0;
+        if (!visible && clip != Clip::Saving && !(clip == Clip::Saved && GetTickCount64() < clipUntil)) {
+            socket.reset(); settling = Command::None; errorUntil = 0; clip = Clip::Idle;
             Guard g; state = {}; sampled = 0;
         } else try {
-            if (!socket) { socket = std::make_unique<Socket>(); socket->open(); }
-            if (action) {
+            if (!socket) { socket = std::make_unique<Socket>(); socket->open(true); }
+            if (action != Command::None) {
+                const bool save = action == Command::SaveReplay;
+                if (save) {
+                    // Drain earlier output events before requesting this clip.
+                    bool ok;
+                    socket->request("GetReplayBufferStatus", ok);
+                    socket->replaySaved = false;
+                }
                 bool ok;
-                socket->request(action, ok);
-                errorUntil = ok ? 0 : GetTickCount64()+4000;
-                settling = ok ? action : nullptr;
-                settleUntil = GetTickCount64()+6000;
+                socket->request(requestName(action), ok);
+                auto now = GetTickCount64();
+                errorUntil = ok ? 0 : now+4000;
+                settling = ok && !save ? action : Command::None;
+                settleUntil = now+6000;
+                clip = ok && save ? Clip::Saving : Clip::Idle;
+                clipUntil = now+30000;
             }
             auto next = socket->poll();
             auto now = GetTickCount64();
-            if (settling) {
-                bool active = std::string_view(settling).find("Record") != std::string_view::npos
-                            ? next.recording : next.live;
-                if (active == (std::string_view(settling).rfind("Start",0)==0)) settling = nullptr;
-                else if (now >= settleUntil) { settling = nullptr; errorUntil = now+4000; }
+            if (settling != Command::None) {
+                if (reached(settling,next)) settling = Command::None;
+                else if (now >= settleUntil) { settling = Command::None; errorUntil = now+4000; }
             }
+            if (clip == Clip::Saving && (socket->replaySaved || now >= clipUntil)) {
+                clip = socket->replaySaved ? Clip::Saved : Clip::Unconfirmed;
+                clipUntil = now+4500;
+            } else if (now >= clipUntil) clip = Clip::Idle;
+            next.clip = clip;
             Guard g;
             next.rejected = now < errorUntil;
-            next.busy = queued || settling;
+            next.busy = queued != Command::None || settling != Command::None || clip == Clip::Saving;
             state = next; sampled = now;
         } catch (const Fault& e) {
-            socket.reset(); settling = nullptr; Guard g; state = {e.reason}; sampled = 0; queued = nullptr;
+            socket.reset(); settling = Command::None; clip = Clip::Idle; Guard g; state = {e.reason}; sampled = 0; queued = Command::None;
         } catch (const std::exception&) {
-            socket.reset(); settling = nullptr; Guard g; state = {Link::Failed}; sampled = 0; queued = nullptr;
+            socket.reset(); settling = Command::None; clip = Clip::Idle; Guard g; state = {Link::Failed}; sampled = 0; queued = Command::None;
         }
-        WaitForSingleObject(wake, !visible ? INFINITE : socket ? 450 : 1300);
+        WaitForSingleObject(wake, socket ? 450 : visible ? 1300 : INFINITE);
     }
     return 0;
 }
@@ -299,14 +347,26 @@ Status read() {
 void press(Action a, bool expectedActive) {
     Guard g;
     auto now = GetTickCount64();
-    bool active = a == Action::Record ? state.recording : state.live;
-    if (quitting || state.link != Link::Ready || state.busy || active != expectedActive ||
+    if (quitting || state.link != Link::Ready || state.busy ||
         now-sampled >= freshMs || now-lastVisit >= freshMs) return;
-    queued = a == Action::Record ? (active ? "StopRecord" : "StartRecord")
-                                 : (active ? "StopStream" : "StartStream");
+    switch (a) {
+    case Action::Record:
+        if (state.recording != expectedActive) return;
+        queued = expectedActive ? Command::StopRecord : Command::StartRecord;
+        break;
+    case Action::Stream:
+        if (state.live != expectedActive) return;
+        queued = expectedActive ? Command::StopStream : Command::StartStream;
+        break;
+    case Action::Replay:
+        if (state.replay == Replay::Unavailable || (state.replay == Replay::Running) != expectedActive) return;
+        queued = expectedActive ? Command::SaveReplay : Command::StartReplay;
+        break;
+    }
+    state.clip = Clip::Idle;
     state.busy = true; requested = now; SetEvent(wake);
 }
 void stop() {
-    Guard g; quitting = true; queued = nullptr; if (wake) SetEvent(wake); if (previewWake) SetEvent(previewWake);
+    Guard g; quitting = true; queued = Command::None; if (wake) SetEvent(wake); if (previewWake) SetEvent(previewWake);
 }
 }

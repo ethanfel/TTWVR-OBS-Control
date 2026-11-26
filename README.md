@@ -1,6 +1,6 @@
 # TTWVR OBS Control
 
-Start or stop OBS recording and streaming from your Pip-Boy. The OBS tab shows a preview of your current scene and whether you’re recording or live.
+Save the last few minutes of gameplay, or start and stop OBS recording and streaming from your Pip-Boy. The OBS tab shows a preview of your current scene and whether you’re recording or live.
 
 ## Install
 
@@ -10,7 +10,13 @@ Start or stop OBS recording and streaming from your Pip-Boy. The OBS tab shows a
 
 ## Controls
 
-- **WristBoy** — Move one tab past **Radio**. Press **A** to start or stop recording, or **X** to start or stop streaming.
-- **PauseBoy** — Select **[ OBS ]**, then choose the recording or streaming button.
+- **WristBoy** — Move one tab past **Radio**. Press **A** to start or stop recording, **X** for streaming, or **Y** for replay.
+- **PauseBoy** — Select **[ OBS ]**, then select the action on screen.
+
+## Save a replay
+
+In OBS, open **Settings → Output**, enable **Replay Buffer**, and set **Maximum Replay Time** to **300** (5 minutes) or **600** (10 minutes). If OBS shows a memory limit, allow enough for your recording quality.
+
+Before playing, select **Start replay buffer** in the Pip-Boy. After a moment you want to keep, select **Save replay**. **Clip saved** means OBS has written the clip to your recording folder. The buffer keeps rolling after each save. To start buffering whenever OBS opens, add `--startreplaybuffer` to your OBS shortcut.
 
 For portable OBS or native Linux OBS with Proton, set `ConfigFile` in `Data/NVSE/Plugins/TTWVROBS.ini` to the game-visible path of your OBS WebSocket `config.json`.

@@ -13,7 +13,7 @@ struct Mask {
     std::vector<unsigned char> intensity;
     std::string key;
     bool prepare(const studio::Status& s,bool picture) {
-        std::string id = std::string(studio::statusLine(s)) + "|" + studio::streamButton(s) + "|" + studio::recordButton(s) + (picture ? "1" : "0");
+        std::string id = std::string(studio::statusLine(s)) + "|" + studio::streamButton(s) + "|" + studio::recordButton(s) + "|" + studio::replayButton(s) + (picture ? "1" : "0");
         if (id == key) return true;
         BITMAPINFO info{};
         info.bmiHeader = {sizeof(BITMAPINFOHEADER), w, -h, 1, 32, BI_RGB, 0, 0, 0, 0, 0};
@@ -27,9 +27,10 @@ struct Mask {
         SetBkMode(dc,TRANSPARENT); SetTextColor(dc,RGB(255,255,255));
         const Caption captions[] = {
             {20,7,20,"OBS PROGRAM"}, {20,202,21,studio::statusLine(s)},
-            {22,231,22,std::string("A   ")+studio::recordButton(s)},
-            {22,260,22,std::string("X   ")+studio::streamButton(s)},
-            {20,297,15,"<  RADIO                            LOCAL MAP  >"},
+            {22,227,20,std::string("A   ")+studio::recordButton(s)},
+            {22,250,20,std::string("X   ")+studio::streamButton(s)},
+            {22,273,20,std::string("Y   ")+studio::replayButton(s)},
+            {20,300,15,"<  RADIO                            LOCAL MAP  >"},
             {141,98,16,picture ? "" : "Preview unavailable"}
         };
         for (const auto& c:captions) {

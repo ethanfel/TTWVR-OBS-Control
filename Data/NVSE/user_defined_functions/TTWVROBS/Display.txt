@@ -1,9 +1,11 @@
-begin Function {string_var status, string_var recordLabel, string_var streamLabel, int ready, int rec, int live, int picture}
+begin Function {string_var status, string_var recordLabel, string_var streamLabel, int ready, int rec, int live, int picture, string_var replayLabel, int replayState}
  SetUIStringAlt "MapMenu/GLOW_BRANCH/TTWVROBS/Body/Status/string" "%z" status
  SetUIStringAlt "MapMenu/GLOW_BRANCH/TTWVROBS/Body/Record/Label/string" "%z" recordLabel
  SetUIStringAlt "MapMenu/GLOW_BRANCH/TTWVROBS/Body/Stream/Label/string" "%z" streamLabel
  SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/NoPreview/visible" (1 - picture)
  SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_ready" ready
+ SetUIStringAlt "MapMenu/GLOW_BRANCH/TTWVROBS/Body/Replay/Label/string" "%z" replayLabel
+ SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_replay" replayState
  SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_record" rec
  SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_live" live
 end

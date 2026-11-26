@@ -38,6 +38,8 @@ int main(int argc,char** argv) {
     }
     // Production diagnostic is read-only. Only the test runner creates this fixture directory.
     if (argc!=2 || std::strcmp(argv[1],"--fixture") || GetFileAttributesW(L"mock-obs-only.flag")==INVALID_FILE_ATTRIBUTES) return 0;
+    if (read().replay != Replay::Unavailable) return 11;
+    press(Action::Replay,false); // Disabled in OBS, cannot send an action.
     press(Action::Record,false); press(Action::Record,false);
     if (!waitFor([](Status s){return s.recording && !s.busy;})) return 2;
     press(Action::Stream,false);
@@ -49,5 +51,17 @@ int main(int argc,char** argv) {
     if (!waitFor([](Status s){return !s.live && !s.recording && !s.busy;})) return 5;
     press(Action::Record,false);
     if (!waitFor([](Status s){return s.rejected && !s.recording && !s.busy;})) return 6;
+    if (read().replay != Replay::Stopped) return 12;
+    press(Action::Replay,true); // Stale Save button must never start the buffer.
+    press(Action::Replay,false);
+    if (!waitFor([](Status s){return s.replay==Replay::Running && !s.busy;})) return 13;
+    press(Action::Replay,false); // Stale Start button must never save.
+    press(Action::Replay,true); press(Action::Replay,true);
+    if (!waitFor([](Status s){return s.clip==Clip::Saving && s.busy;})) return 14;
+    if (!waitFor([](Status s){return s.clip==Clip::Saved && !s.busy;})) return 15;
+    press(Action::Replay,true);
+    if (!waitFor([](Status s){return s.clip==Clip::Saved && !s.busy;})) return 16;
+    press(Action::Replay,true);
+    if (!waitFor([](Status s){return s.rejected && s.clip==Clip::Idle && !s.busy;})) return 17;
     stop(); Sleep(100); return 0;
 }

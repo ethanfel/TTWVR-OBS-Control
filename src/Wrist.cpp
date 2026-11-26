@@ -25,7 +25,7 @@ bool armed=false;
 int previousButtons=0;
 unsigned lastNotice=0;
 studio::Picture previousPicture;
-constexpr unsigned Ready=1, Record=2, Live=4;
+constexpr unsigned Ready=1, Record=2, Live=4, ReplayRunning=8;
 int page() { return *reinterpret_cast<const int*>(host+0x124aa20); }
 int category() { return *reinterpret_cast<const int*>(host+0xf7d12c); }
 void refresh() {
@@ -38,7 +38,8 @@ bool __cdecl redrawDue() {
 }
 unsigned flags(const studio::Status& s) {
     return (s.link==studio::Link::Ready && !s.busy ? Ready:0u) |
-           (s.recording ? Record:0u) | (s.live ? Live:0u);
+           (s.recording ? Record:0u) | (s.live ? Live:0u) |
+           (s.replay==studio::Replay::Running ? ReplayRunning:0u);
 }
 void __cdecl section(int next) {
     if (page()!=next) reset();
@@ -80,19 +81,22 @@ void __cdecl input(void* owner,void* frame,int a,int b,int x,int y) {
     studio::visit();
     auto s=studio::read();
     unsigned notice=flags(s) | (static_cast<unsigned>(s.link)<<4) |
-                    (s.busy<<9) | (s.rejected<<10) | (s.paused<<11) | (s.reconnecting<<12);
+                    (s.busy<<9) | (s.rejected<<10) | (s.paused<<11) | (s.reconnecting<<12) |
+                    (static_cast<unsigned>(s.replay)<<13) | (static_cast<unsigned>(s.clip)<<15);
     auto picture=studio::preview();
     if (notice!=lastNotice || picture!=previousPicture) {
         lastNotice=notice; previousPicture=std::move(picture); refresh();
     }
-    int buttons=(static_cast<unsigned char>(a)!=0) | ((static_cast<unsigned char>(x)!=0)<<1);
+    int buttons=(static_cast<unsigned char>(a)!=0) | ((static_cast<unsigned char>(x)!=0)<<1) |
+                ((static_cast<unsigned char>(y)!=0)<<2);
     if (!buttons) armed=true;
     const int pressed=buttons & ~previousButtons;
     previousButtons=buttons;
     unsigned shown=painted.load();
-    if (armed && (shown&Ready) && buttons!=3) {
+    if (armed && (shown&Ready) && buttons && (buttons & (buttons-1))==0) {
         if (pressed==1) studio::press(studio::Action::Record,shown&Record);
         if (pressed==2) studio::press(studio::Action::Stream,shown&Live);
+        if (pressed==4) studio::press(studio::Action::Replay,shown&ReplayRunning);
     }
 }
 struct Call { unsigned site,target; const void* replacement; };

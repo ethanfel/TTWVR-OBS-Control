@@ -52,7 +52,7 @@ void initialize() {
     if (!init || !poll || !display || !scripts->call(init,nullptr,nullptr,&r,0)) {
         poll=nullptr; log("PauseBoy unavailable: check installed UDF files and JIP LN"); return;
     }
-    log("PauseBoy DATA / OBS registered (0.2.1)");
+    log("PauseBoy DATA / OBS registered (0.3.0)");
 }
 void __cdecl onMessage(Message* m) {
     if (!m) return;
@@ -75,20 +75,23 @@ void __cdecl onMessage(Message* m) {
     int cmd=static_cast<int>(r.number);
     if (cmd==2 || cmd==3) studio::press(studio::Action::Record,cmd==3);
     if (cmd==4 || cmd==5) studio::press(studio::Action::Stream,cmd==5);
+    if (cmd==6 || cmd==7) studio::press(studio::Action::Replay,cmd==7);
     auto s=studio::read();
     const bool picture=updatePausePreview(studio::preview());
     unsigned view=(unsigned(picture)<<10) | static_cast<unsigned>(s.link) | (s.recording<<4) | (s.live<<5) | (s.busy<<6) |
-                  (s.paused<<7) | (s.reconnecting<<8) | (s.rejected<<9);
+                  (s.paused<<7) | (s.reconnecting<<8) | (s.rejected<<9) |
+                  (static_cast<unsigned>(s.replay)<<11) | (static_cast<unsigned>(s.clip)<<13);
     if (dirty || view!=lastView) {
-        bool ok=scripts->call(display,nullptr,nullptr,&r,7,studio::statusLine(s),studio::recordButton(s),
-                    studio::streamButton(s),int(s.link==studio::Link::Ready && !s.busy),int(s.recording),int(s.live),int(picture));
+        bool ok=scripts->call(display,nullptr,nullptr,&r,9,studio::statusLine(s),studio::recordButton(s),
+                    studio::streamButton(s),int(s.link==studio::Link::Ready && !s.busy),int(s.recording),int(s.live),int(picture),
+                    studio::replayButton(s),static_cast<int>(s.replay));
         dirty=!ok; lastView=view;
     }
 }
 }
 extern "C" __declspec(dllexport) bool NVSEPlugin_Query(const Nvse* n,Info* i) {
     if (!n || !i) return false;
-    *i={1,"TTWVR OBS Control",3};
+    *i={1,"TTWVR OBS Control",4};
     return !n->editor && n->runtime==0x040020d0;
 }
 extern "C" __declspec(dllexport) bool NVSEPlugin_Load(const Nvse* n) {

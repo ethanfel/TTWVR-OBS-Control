@@ -23,10 +23,16 @@ async def main():
             await ws.send(json.dumps(dict(op=op, d=data)))
         await send(0, dict(rpcVersion=1, authentication=dict(salt=salt, challenge=challenge)))
         ident = json.loads(await ws.recv())
-        assert ident == dict(op=1,d=dict(rpcVersion=1, eventSubscriptions=0,
+        subscriptions = ident['d']['eventSubscriptions']
+        assert subscriptions in (0, 64)
+        assert ident == dict(op=1,d=dict(rpcVersion=1, eventSubscriptions=subscriptions,
                                           authentication=digest(digest(secret+salt)+challenge)))
         await send(2, dict(negotiatedRpcVersion=1))
-        live = rec = False
+        live = rec = replay = False
+        save_polls = 0
+        async def saved(path):
+            await send(5, dict(eventType='ReplayBufferSaved', eventIntent=64,
+                               eventData=dict(savedReplayPath=path)))
         async for raw in ws:
             message = json.loads(raw)
             assert message['op'] == 6
@@ -37,7 +43,33 @@ async def main():
                 data = dict(outputActive=rec,outputPaused=False)
             elif t == 'GetStreamStatus':
                 data = dict(outputActive=live,outputReconnecting=False)
+            elif t == 'GetReplayBufferStatus':
+                assert subscriptions == 64
+                ok = len(actions) >= 5
+                data = dict(outputActive=replay) if ok else {}
+                if save_polls:
+                    save_polls -= 1
+                    if save_polls == 0: await saved('mock/first.mkv')
+            elif t == 'StartReplayBuffer':
+                assert not replay
+                replay = True
+                actions.append(t)
+                data = {}
+                await saved('mock/earlier.mkv')
+            elif t == 'SaveReplayBuffer':
+                assert replay
+                actions.append(t)
+                saves = actions.count(t)
+                if saves == 1:
+                    save_polls = 4
+                    await saved('')  # Missing path cannot confirm a clip.
+                elif saves == 2:
+                    await saved('mock/second.mkv')  # Event can precede the request response.
+                else:
+                    ok = False
+                data = {}
             elif t == 'GetCurrentProgramScene':
+                assert subscriptions == 0
                 data = dict(currentProgramSceneName='Game Program')
             elif t == 'GetSourceScreenshot':
                 assert req['requestData']['sourceName'] == 'Game Program'
@@ -73,7 +105,8 @@ async def main():
                                   env={**os.environ,'APPDATA':str(root)})
             code = await asyncio.wait_for(process.wait(), 30)
             assert code == 0, code
-            assert actions == ['StartRecord','StartStream','StopRecord','StopStream','StartRecord'], actions
-            print('Authenticated, verified four output transitions, duplicate/stale suppression and OBS rejection.')
+            assert actions == ['StartRecord','StartStream','StopRecord','StopStream','StartRecord',
+                               'StartReplayBuffer','SaveReplayBuffer','SaveReplayBuffer','SaveReplayBuffer'], actions
+            print('Authenticated, verified four output transitions, duplicate/stale suppression and OBS rejection. Verified replay start, delayed/early save events and rejection.')
 if __name__=='__main__':
     asyncio.run(main())
