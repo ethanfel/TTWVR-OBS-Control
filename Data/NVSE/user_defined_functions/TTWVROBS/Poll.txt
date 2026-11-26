@@ -1,0 +1,25 @@
+begin Function {}
+ int cmd
+ if GetActiveMenuMode != 1023
+  if IsComponentLoaded "MapMenu/GLOW_BRANCH/TTWVROBS"
+   if GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible"
+    SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible" 0
+    SetUIFloat "MapMenu/GLOW_BRANCH/MM_MainRect/visible" (GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_oldvisible")
+    SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" 0
+    SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_ready" 0
+   endif
+  endif
+  return
+ endif
+ if IsComponentLoaded "MapMenu/GLOW_BRANCH/TTWVROBS" == 0
+  InjectUIXML "MapMenu/GLOW_BRANCH" "Data/Menus/Prefabs/TTWVROBS/panel.xml"
+ endif
+ if GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible"
+  let cmd := GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action"
+  SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" 0
+  if cmd == 0
+   let cmd := 1
+  endif
+  SetFunctionValue cmd
+ endif
+end

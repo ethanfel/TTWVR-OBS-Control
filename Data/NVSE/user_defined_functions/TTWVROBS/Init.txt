@@ -1,0 +1,4 @@
+begin Function {}
+ SetOnMenuClickEventHandler (CompileScript "TTWVROBS/Click.txt") 1 "MapMenu/GLOW_BRANCH/TTWVROBS"
+ SetFunctionValue 1
+end

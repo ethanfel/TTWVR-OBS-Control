@@ -1,0 +1,23 @@
+begin Function {int menuID, int tileID, string_var tileName}
+ if GetActiveMenuMode != 1023
+  return
+ endif
+ if tileID == 29471
+  if GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible"
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible" 0
+   SetUIFloat "MapMenu/GLOW_BRANCH/MM_MainRect/visible" (GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_oldvisible")
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_ready" 0
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" 0
+  else
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_oldvisible" (GetUIFloat "MapMenu/GLOW_BRANCH/MM_MainRect/visible")
+   SetUIFloat "MapMenu/GLOW_BRANCH/MM_MainRect/visible" 0
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible" 1
+  endif
+ elseif GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/Body/visible" && GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_ready"
+  if tileID == 29472
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" (2 + (GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_record"))
+  elseif tileID == 29473
+   SetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_action" (4 + (GetUIFloat "MapMenu/GLOW_BRANCH/TTWVROBS/_live"))
+  endif
+ endif
+end
