@@ -2,7 +2,8 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 root = Path(__file__).parent
-out = root / 'build' / 'TTWVR-OBS-Control-0.3.0.zip'
+version = (root / 'VERSION').read_text().strip()
+out = root / 'build' / f'TTWVR-OBS-Control-{version}.zip'
 with ZipFile(out, 'w', ZIP_DEFLATED) as z:
     for file in sorted((root / 'Data').rglob('*')):
         if file.is_file():

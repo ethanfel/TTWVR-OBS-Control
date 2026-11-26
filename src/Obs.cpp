@@ -142,7 +142,7 @@ struct Socket {
     }
     void open(bool outputEvents=false) {
         auto config = settings();
-        session.reset(WinHttpOpen(L"TTWVR OBS Control/0.3.0", WINHTTP_ACCESS_TYPE_NO_PROXY,
+        session.reset(WinHttpOpen(L"TTWVR OBS Control/" TTWVROBS_RELEASE, WINHTTP_ACCESS_TYPE_NO_PROXY,
                                   nullptr, nullptr, 0));
         if (!session || !WinHttpSetTimeouts(session.get(), 1500, 1500, 2000, 2500))
             throw Fault{Link::Offline};

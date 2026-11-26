@@ -46,13 +46,13 @@ void* compileUdf(const char* path) {
 void initialize() {
     initialized=true;
     log(wrist::install(GetModuleHandleW(L"TTWVR.dll")) ? "WristBoy DATA / OBS installed" :
-        "WristBoy unavailable: unsupported TTWVR build or menu layout");
+        "WristBoy unavailable: unrecognized TTWVR menu layout");
     init=compileUdf("Init"); poll=compileUdf("Poll"); display=compileUdf("Display");
     Result r;
     if (!init || !poll || !display || !scripts->call(init,nullptr,nullptr,&r,0)) {
         poll=nullptr; log("PauseBoy unavailable: check installed UDF files and JIP LN"); return;
     }
-    log("PauseBoy DATA / OBS registered (0.3.0)");
+    log("PauseBoy DATA / OBS registered (" TTWVROBS_RELEASE ")");
 }
 void __cdecl onMessage(Message* m) {
     if (!m) return;
@@ -91,7 +91,7 @@ void __cdecl onMessage(Message* m) {
 }
 extern "C" __declspec(dllexport) bool NVSEPlugin_Query(const Nvse* n,Info* i) {
     if (!n || !i) return false;
-    *i={1,"TTWVR OBS Control",4};
+    *i={1,"TTWVR OBS Control",TTWVROBS_BUILD};
     return !n->editor && n->runtime==0x040020d0;
 }
 extern "C" __declspec(dllexport) bool NVSEPlugin_Load(const Nvse* n) {

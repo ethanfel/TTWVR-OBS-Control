@@ -1,4 +1,5 @@
 #include "Wrist.h"
+#include "WristLayout.h"
 #include "Panel.h"
 #include "Trace.h"
 #include "Preview.h"
@@ -18,7 +19,7 @@ Input nativeInput;
 using RedrawDue=bool(__cdecl*)();
 RedrawDue nativeRedrawDue;
 std::atomic<bool> redrawPending{false};
-BYTE* host;
+MenuLayout menu;
 std::atomic<bool> active{false};
 std::atomic<unsigned> painted{0};
 bool armed=false;
@@ -26,8 +27,8 @@ int previousButtons=0;
 unsigned lastNotice=0;
 studio::Picture previousPicture;
 constexpr unsigned Ready=1, Record=2, Live=4, ReplayRunning=8;
-int page() { return *reinterpret_cast<const int*>(host+0x124aa20); }
-int category() { return *reinterpret_cast<const int*>(host+0xf7d12c); }
+int page() { return *menu.page; }
+int category() { return *menu.category; }
 void refresh() {
     redrawPending=true;
 }
@@ -99,43 +100,38 @@ void __cdecl input(void* owner,void* frame,int a,int b,int x,int y) {
         if (pressed==4) studio::press(studio::Action::Replay,shown&ReplayRunning);
     }
 }
-struct Call { unsigned site,target; const void* replacement; };
+struct Call { MenuCall native; const void* replacement; };
 }
 void reset() { active=false; painted=0; armed=false; previousButtons=0; }
 bool install(HMODULE mod) {
-    if (!mod) return false;
-    host=reinterpret_cast<BYTE*>(mod);
-    auto* nt=reinterpret_cast<const IMAGE_NT_HEADERS*>(host+reinterpret_cast<IMAGE_DOS_HEADER*>(host)->e_lfanew);
-    if (nt->FileHeader.TimeDateStamp!=0x6afa9b4f || nt->OptionalHeader.SizeOfImage!=0x1d84000) return false;
-    const Call calls[]={{0x12bc66,0x12f6d0,reinterpret_cast<void*>(draw)},
-        {0x13ca91,0x13c270,reinterpret_cast<void*>(step)}, {0x13cb88,0x13d8c0,reinterpret_cast<void*>(input)},
-        {0x13ca61,0x13af90,reinterpret_cast<void*>(section)},
-        {0x101bfe,0x100700,reinterpret_cast<void*>(redrawDue)}};
+    MenuLayout found;
+    if (!findMenuLayout(mod,found)) return false;
+    const Call calls[]={{found.draw,reinterpret_cast<void*>(draw)}, {found.step,reinterpret_cast<void*>(step)},
+        {found.input,reinterpret_cast<void*>(input)}, {found.section,reinterpret_cast<void*>(section)},
+        {found.redraw,reinterpret_cast<void*>(redrawDue)}};
     constexpr unsigned sites=sizeof(calls)/sizeof(calls[0]);
     DWORD old[sites]{};
-    for (const auto& c:calls) {
-        auto* p=host+c.site;
-        int distance; std::memcpy(&distance,p+1,4);
-        if (*p!=0xe8 || p+5+distance!=host+c.target) return false;
-    }
-    nativeDraw=reinterpret_cast<Draw>(host+calls[0].target);
-    nativeStep=reinterpret_cast<Step>(host+calls[1].target);
-    nativeInput=reinterpret_cast<Input>(host+calls[2].target);
-    nativeSection=reinterpret_cast<Section>(host+calls[3].target);
-    nativeRedrawDue=reinterpret_cast<RedrawDue>(host+calls[4].target);
     // Acquire permission for all sites before changing any. Two share a page,
     // so unwind their protections in reverse order.
     unsigned count=0;
     for (;count<sites;++count)
-        if (!VirtualProtect(host+calls[count].site,5,PAGE_EXECUTE_READWRITE,&old[count])) break;
+        if (!VirtualProtect(calls[count].native.site,5,PAGE_EXECUTE_READWRITE,&old[count])) break;
     const bool ok=count==sites;
-    if (ok) for (const auto& c:calls) {
-        auto* p=host+c.site;
-        auto delta=static_cast<uint32_t>(reinterpret_cast<uintptr_t>(c.replacement)-reinterpret_cast<uintptr_t>(p+5));
-        std::memcpy(p+1,&delta,4);
-        FlushInstructionCache(GetCurrentProcess(),p,5);
+    if (ok) {
+        menu=found;
+        nativeDraw=reinterpret_cast<Draw>(menu.draw.target);
+        nativeStep=reinterpret_cast<Step>(menu.step.target);
+        nativeInput=reinterpret_cast<Input>(menu.input.target);
+        nativeSection=reinterpret_cast<Section>(menu.section.target);
+        nativeRedrawDue=reinterpret_cast<RedrawDue>(menu.redraw.target);
+        for (const auto& c:calls) {
+            auto* p=c.native.site;
+            auto delta=static_cast<uint32_t>(reinterpret_cast<uintptr_t>(c.replacement)-reinterpret_cast<uintptr_t>(p+5));
+            std::memcpy(p+1,&delta,4);
+            FlushInstructionCache(GetCurrentProcess(),p,5);
+        }
     }
-    while (count) { --count; DWORD unused; VirtualProtect(host+calls[count].site,5,old[count],&unused); }
+    while (count) { --count; DWORD unused; VirtualProtect(calls[count].native.site,5,old[count],&unused); }
     return ok;
 }
 }

@@ -4,9 +4,11 @@ Save the last few minutes of gameplay, or start and stop OBS recording and strea
 
 ## Install
 
-1. Download the mod ZIP from the [latest release](https://github.com/ethanfel/TTWVR-OBS-Control/releases/latest). Install and enable it in the same mod profile as TTWVR 1.1.7 and JIP LN NVSE.
+1. Download the mod ZIP from the [latest release](https://github.com/ethanfel/TTWVR-OBS-Control/releases/latest). Install and enable it in the same mod profile as TTWVR and JIP LN NVSE.
 2. On the gaming PC, open OBS → **Tools → WebSocket Server Settings**. Enable the server and leave authentication on. The addon reads the password from OBS.
 3. Launch Fallout and open **DATA → OBS**.
+
+**1.1.8-r1** is the first addon release for TTWVR 1.1.8. WristBoy also supports 1.1.7 and checks the menu layout at startup. PauseBoy works independently of that check.
 
 ### Portable OBS on Windows
 
