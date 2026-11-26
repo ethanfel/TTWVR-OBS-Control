@@ -8,7 +8,7 @@ Save the last few minutes of gameplay, or start and stop OBS recording and strea
 2. On the gaming PC, open OBS → **Tools → WebSocket Server Settings**. Enable the server and leave authentication on. The addon reads the password from OBS.
 3. Launch Fallout and open **DATA → OBS**.
 
-**1.1.8-r1** is the first addon release for TTWVR 1.1.8. WristBoy also supports 1.1.7 and checks the menu layout at startup. PauseBoy works independently of that check.
+In **1.1.8-r2**, `1.1.8` is the tested TTWVR version and `r2` is the addon revision. WristBoy also supports 1.1.7 and checks the menu layout at startup. PauseBoy works independently of that check.
 
 ### Portable OBS on Windows
 
@@ -24,7 +24,7 @@ Standard Windows installs can leave `ConfigFile` blank. For native Linux OBS wit
 ## Controls
 
 - **WristBoy** — Move one tab past **Radio**. Press **A** to start or stop recording, **X** for streaming, or **Y** for replay.
-- **PauseBoy** — Select **[ OBS ]**, then select the action on screen.
+- **PauseBoy** — Select **[ OBS ]**. Recording, streaming and replay controls are on the left, with the scene preview on the right.
 
 ## Save a replay
 

@@ -9,34 +9,38 @@
   </hotrect>
  <rect name="Body">
   <visible>&false;</visible><x>54</x><y>65</y><width>855</width><height>605</height><locus>&true;</locus>
-  <text name="Title"><x>20</x><y>0</y><font>4</font><string>OBS PROGRAM</string><systemcolor>&Pipboy;</systemcolor></text>
+  <text name="Title"><x>280</x><y>74</y><font>4</font><string>OBS PROGRAM</string><systemcolor>&Pipboy;</systemcolor></text>
   <image name="Monitor">
-   <x>20</x><y>60</y><width>480</width><height>270</height><zoom>-1</zoom>
+   <x>280</x><y>132</y><width>560</width><height>315</height><zoom>-1</zoom>
    <red>255</red><green>255</green><blue>255</blue><alpha>255</alpha>
    <filename>Interface\TTWVROBS\monitor.dds</filename>
   </image>
   <rect name="NoPreview">
-   <x>20</x><y>60</y><width>480</width><height>270</height><locus>&true;</locus><depth>1</depth>
-   <image name="Shade"><width>480</width><height>270</height><filename>Interface\Shared\Background\solid_black.dds</filename></image>
-   <text name="Message"><x>25</x><y>114</y><depth>2</depth><font>2</font><string>Waiting for OBS preview...</string><systemcolor>&Pipboy;</systemcolor></text>
+   <x><copy src="sibling(Monitor)" trait="x"/></x><y><copy src="sibling(Monitor)" trait="y"/></y>
+   <width><copy src="sibling(Monitor)" trait="width"/></width><height><copy src="sibling(Monitor)" trait="height"/></height>
+   <locus>&true;</locus><depth>1</depth>
+   <image name="Shade"><width><copy src="parent()" trait="width"/></width><height><copy src="parent()" trait="height"/></height><filename>Interface\Shared\Background\solid_black.dds</filename></image>
+   <text name="Message">
+    <x><copy src="parent()" trait="width"/><sub src="me()" trait="width"/><div>2</div></x>
+    <y><copy src="parent()" trait="height"/><sub src="me()" trait="height"/><div>2</div></y><depth>2</depth><font>2</font><string>Waiting for OBS preview...</string><systemcolor>&Pipboy;</systemcolor></text>
   </rect>
-  <text name="Status"><x>20</x><y>345</y><font>2</font><string>Connecting to OBS...</string><systemcolor>&Pipboy;</systemcolor></text>
+  <text name="Status"><x>16</x><y>85</y><wrapwidth>240</wrapwidth><font>2</font><string>Connecting to OBS...</string><systemcolor>&Pipboy;</systemcolor></text>
   <hotrect name="Record">
-   <id>29472</id><x>20</x><y>412</y><width>700</width><height>48</height>
+   <id>29472</id><x>16</x><y>193</y><width>240</width><height>80</height>
    <target>&true;</target><locus>&true;</locus><clicksound>UIMenuOK</clicksound>
-   <text name="Label"><font>2</font><string>Recording unavailable</string><systemcolor>&Pipboy;</systemcolor>
+   <text name="Label"><font>2</font><wrapwidth><copy src="parent()" trait="width"/></wrapwidth><string>Recording unavailable</string><systemcolor>&Pipboy;</systemcolor>
     <alpha><copy>180</copy><add src="parent()" trait="mouseover"/></alpha></text>
   </hotrect>
   <hotrect name="Stream">
-   <id>29473</id><x>20</x><y>485</y><width>700</width><height>48</height>
+   <id>29473</id><x>16</x><y>280</y><width>240</width><height>80</height>
    <target>&true;</target><locus>&true;</locus><clicksound>UIMenuOK</clicksound>
-   <text name="Label"><font>2</font><string>Streaming unavailable</string><systemcolor>&Pipboy;</systemcolor>
+   <text name="Label"><font>2</font><wrapwidth><copy src="parent()" trait="width"/></wrapwidth><string>Streaming unavailable</string><systemcolor>&Pipboy;</systemcolor>
     <alpha><copy>180</copy><add src="parent()" trait="mouseover"/></alpha></text>
   </hotrect>
   <hotrect name="Replay">
-   <id>29474</id><x>20</x><y>550</y><width>700</width><height>48</height>
+   <id>29474</id><x>16</x><y>367</y><width>240</width><height>80</height>
    <target>&true;</target><locus>&true;</locus><clicksound>UIMenuOK</clicksound>
-   <text name="Label"><font>2</font><string>Replay unavailable</string><systemcolor>&Pipboy;</systemcolor>
+   <text name="Label"><font>2</font><wrapwidth><copy src="parent()" trait="width"/></wrapwidth><string>Replay unavailable</string><systemcolor>&Pipboy;</systemcolor>
     <alpha><copy>180</copy><add src="parent()" trait="mouseover"/></alpha></text>
   </hotrect>
  </rect>
